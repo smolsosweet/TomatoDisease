@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nhận diện bệnh lá cà chua</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      padding: 40px;
+      margin-top: 30px;
+      margin-bottom: 30px;
+    }
+    h1 {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #6c757d;
+      font-size: 16px;
+      margin-bottom: 30px;
+    }
+    .nav-tabs .nav-link {
+      color: #667eea;
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .nav-tabs .nav-link:hover {
+      border-bottom-color: #667eea;
+      color: #764ba2;
+    }
+    .nav-tabs .nav-link.active {
+      color: #764ba2;
+      border-bottom-color: #764ba2;
+      background: transparent;
+    }
+    .upload-area {
+      border: 3px dashed #667eea;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s;
+      cursor: pointer;
+      background: #f8f9ff;
+    }
+    .upload-area:hover {
+      background: #f0f1ff;
+      border-color: #764ba2;
+    }
+    .upload-area.dragover {
+      background: #e8ebff;
+      border-color: #764ba2;
+    }
+    #fileInput {
+      display: none;
+    }
+    .preview-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 40px;
+      align-items: start;
+    }
+    .preview-image {
+      text-align: center;
+    }
+    .preview-image img, .preview-image video {
+      max-width: 100%;
+      border-radius: 10px;
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+    }
+    .preview-image canvas {
+      max-width: 100%;
+      border-radius: 10px;
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+    }
+    .result-section {
+      background: #f8f9ff;
+      border-radius: 10px;
+      padding: 25px;
+    }
+    .disease-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: #764ba2;
+      margin-bottom: 15px;
+    }
+    .confidence-bar {
+      margin-bottom: 20px;
+    }
+    .confidence-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #667eea;
+    }
+    .progress {
+      height: 25px;
+      border-radius: 10px;
+      background: #e9ecef;
+    }
+    .progress-bar {
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .top-predictions {
+      margin-top: 30px;
+    }
+    .top-predictions h5 {
+      color: #667eea;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+    .prediction-item {
+      background: white;
+      padding: 12px 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 4px solid #667eea;
+      transition: all 0.3s;
+    }
+    .prediction-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 3px 10px rgba(102, 126, 234, 0.15);
+    }
+    .prediction-percentage {
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .camera-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-custom {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 12px 30px;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .btn-custom:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+      color: white;
+    }
+    .btn-custom:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      margin: 20px 0;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .error-alert {
+      display: none;
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .error-alert.show {
+      display: block;
+    }
+    .camera-startup {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+    .camera-startup.show {
+      display: block;
+    }
+    #cameraStream {
+      max-width: 100%;
+      border-radius: 10px;
+      background: #000;
+    }
+    @media (max-width: 768px) {
+      .preview-section {
+        grid-template-columns: 1fr;
+      }
+      .container {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center">🍅 Nhận diện bệnh lá cà chua</h1>
+    <p class="subtitle text-center">AI tự động dự đoán bệnh từ ảnh lá cà chua của bạn</p>
+
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab" onclick="onUploadTabClick()">📤 Upload ảnh</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera" type="button" role="tab" onclick="onCameraTabClick()">📷 Camera</button>
+      </li>
+    </ul>
+
+    <div class="tab-content mt-4" id="myTabContent">
+      <!-- Upload Tab -->
+      <div class="tab-pane fade show active" id="upload" role="tabpanel">
+        <div class="error-alert" id="uploadError"></div>
+        
+        <div class="upload-area" id="uploadArea">
+          <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+          <p style="font-size: 18px; color: #667eea; font-weight: 600; margin-bottom: 5px;">Kéo thả ảnh vào đây hoặc bấm để chọn</p>
+          <p style="color: #6c757d; font-size: 14px;">Hỗ trợ: JPG, PNG, GIF</p>
+          <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="loading" id="uploadLoading">
+          <div class="spinner"></div>
+          <p>Đang phân tích ảnh...</p>
+        </div>
+
+        <div class="preview-section" id="previewSection" style="display: none;">
+          <div class="preview-image">
+            <img id="previewImg" src="" alt="Preview">
+          </div>
+          <div class="result-section">
+            <div class="disease-name" id="diseaseName"></div>
+            <div class="confidence-bar">
+              <div class="confidence-value" id="confidenceText"></div>
+              <div class="progress mt-2">
+                <div class="progress-bar" id="confidenceBar" role="progressbar"></div>
+              </div>
+            </div>
+            <div class="top-predictions">
+              <h5>Top 3 khả năng:</h5>
+              <div id="topPredictions"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Camera Tab -->
+      <div class="tab-pane fade" id="camera" role="tabpanel">
+        <div class="error-alert" id="cameraError"></div>
+
+
+
+        <!-- Camera Active Screen -->
+        <div id="cameraActiveScreen" style="display: none;">
+          <div class="preview-section" id="cameraPreviewSection" style="display: none;">
+            <div class="preview-image">
+              <video id="cameraStream" autoplay playsinline muted></video>
+              <canvas id="capturedCanvas" style="display: none;"></canvas>
+              <img id="capturedImage" src="" alt="Captured" style="display: none;">
+            </div>
+            <div>
+              <div class="camera-controls">
+                <button class="btn btn-custom" id="captureBtn" onclick="captureFrame()">📸 Chụp & Dự đoán</button>
+              </div>
+
+              <div class="loading" id="cameraLoading">
+                <div class="spinner"></div>
+                <p>Đang phân tích ảnh...</p>
+              </div>
+
+              <div class="result-section" id="cameraResultSection" style="display: none; margin-top: 0;">
+                <div class="disease-name" id="cameraDiseaseeName"></div>
+                <div class="confidence-bar">
+                  <div class="confidence-value" id="cameraConfidenceText"></div>
+                  <div class="progress mt-2">
+                    <div class="progress-bar" id="cameraConfidenceBar" role="progressbar"></div>
+                  </div>
+                </div>
+                <div class="top-predictions">
+                  <h5>Top 3 khả năng:</h5>
+                  <div id="cameraTopPredictions"></div>
+                </div>
+                <div class="camera-controls">
+                  <button class="btn btn-custom" onclick="resetCameraResult()">🔄 Chụp lại</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <canvas id="cameraCanvas" style="display: none;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ===== UPLOAD SECTION =====
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const previewSection = document.getElementById('previewSection');
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      fileInput.files = e.dataTransfer.files;
+      handleFileUpload();
+    });
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFileUpload);
+
+    function handleFileUpload() {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      document.getElementById('uploadLoading').style.display = 'block';
+      previewSection.style.display = 'none';
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('previewImg').src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      fetch('/predict', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        displayResult(data, 'upload');
+      })
+      .catch(err => {
+        document.getElementById('uploadError').textContent = '❌ ' + err.message;
+        document.getElementById('uploadError').classList.add('show');
+      })
+      .finally(() => {
+        document.getElementById('uploadLoading').style.display = 'none';
+      });
+    }
+
+    // ===== CAMERA SECTION =====
+    let cameraStream = null;
+    let cameraActive = false;
+    let videoElement = null;
+
+    function onCameraTabClick() {
+      // Auto start camera khi chuyển sang tab camera
+      setTimeout(() => {
+        if (!cameraActive && !cameraStream) {
+          startCamera();
+        }
+      }, 100);
+    }
+
+    async function startCamera() {
+      try {
+        console.log('🔍 Yêu cầu quyền camera...');
+        
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            width: { ideal: 640 }, 
+            height: { ideal: 480 },
+            facingMode: 'environment'
+          },
+          audio: false
+        });
+        
+        console.log('✅ Có quyền camera');
+        
+        videoElement = document.getElementById('cameraStream');
+        videoElement.srcObject = cameraStream;
+        
+        const canvas = document.getElementById('cameraCanvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        
+        cameraActive = true;
+        
+        // Ẩn startup, hiển thị camera
+        document.getElementById('cameraActiveScreen').style.display = 'block';
+        document.getElementById('cameraPreviewSection').style.display = 'grid';
+        document.getElementById('cameraResultSection').style.display = 'none';
+        document.getElementById('cameraError').classList.remove('show');
+        
+        console.log('✅ Camera bắt đầu hiển thị');
+        
+      } catch (err) {
+        console.error('❌ Camera error:', err);
+        let errorMsg = err.name;
+        
+        if (err.name === 'NotAllowedError') {
+          errorMsg = 'Bạn đã từ chối quyền truy cập camera. Vui lòng cho phép trong cài đặt trình duyệt.';
+        } else if (err.name === 'NotFoundError') {
+          errorMsg = 'Không tìm thấy camera. Kiểm tra xem camera có được kết nối không.';
+        } else if (err.name === 'NotReadableError') {
+          errorMsg = 'Camera đang được ứng dụng khác sử dụng. Vui lòng đóng nó.';
+        } else if (err.name === 'SecurityError') {
+          errorMsg = 'HTTPS được yêu cầu để sử dụng camera.';
+        }
+        
+        document.getElementById('cameraError').textContent = '❌ Lỗi camera: ' + errorMsg;
+        document.getElementById('cameraError').classList.add('show');
+      }
+    }
+
+    function captureFrame() {
+      const canvas = document.getElementById('cameraCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (videoElement && videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+      }
+      
+      const imageData = canvas.toDataURL('image/jpeg');
+      
+      // Dừng camera và hiển thị ảnh đã chụp
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+      
+      videoElement.style.display = 'none';
+      const capturedImage = document.getElementById('capturedImage');
+      capturedImage.src = imageData;
+      capturedImage.style.display = 'block';
+      
+      document.getElementById('cameraLoading').style.display = 'block';
+      document.getElementById('cameraResultSection').style.display = 'none';
+
+      fetch('/predict_canvas', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({image: imageData})
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        displayResult(data, 'camera');
+      })
+      .catch(err => {
+        document.getElementById('cameraError').textContent = '❌ ' + err.message;
+        document.getElementById('cameraError').classList.add('show');
+      })
+      .finally(() => {
+        document.getElementById('cameraLoading').style.display = 'none';
+      });
+    }
+
+    function resetCameraResult() {
+      document.getElementById('cameraResultSection').style.display = 'none';
+      
+      const capturedImage = document.getElementById('capturedImage');
+      capturedImage.style.display = 'none';
+      videoElement.style.display = 'block';
+      
+      // Bật camera lại
+      cameraActive = false;
+      startCamera();
+    }
+
+    // ===== DISPLAY RESULT =====
+    function displayResult(data, type) {
+      const conf = Math.round(data.confidence);
+      
+      if (type === 'upload') {
+        document.getElementById('diseaseName').textContent = data.predicted_class_vi;
+        document.getElementById('confidenceText').textContent = `Độ tin cậy: ${conf}%`;
+        document.getElementById('confidenceBar').style.width = conf + '%';
+        document.getElementById('confidenceBar').textContent = conf + '%';
+
+        let html = '';
+        data.top3.forEach((item, idx) => {
+          const prob = Math.round(item[1] * 100);
+          html += `
+            <div class="prediction-item">
+              <span>${idx + 1}. ${item[0]}</span>
+              <span class="prediction-percentage">${prob}%</span>
+            </div>
+          `;
+        });
+        document.getElementById('topPredictions').innerHTML = html;
+        previewSection.style.display = 'grid';
+      } else {
+        document.getElementById('cameraDiseaseeName').textContent = data.predicted_class_vi;
+        document.getElementById('cameraConfidenceText').textContent = `Độ tin cậy: ${conf}%`;
+        document.getElementById('cameraConfidenceBar').style.width = conf + '%';
+        document.getElementById('cameraConfidenceBar').textContent = conf + '%';
+
+        let html = '';
+        data.top3.forEach((item, idx) => {
+          const prob = Math.round(item[1] * 100);
+          html += `
+            <div class="prediction-item">
+              <span>${idx + 1}. ${item[0]}</span>
+              <span class="prediction-percentage">${prob}%</span>
+            </div>
+          `;
+        });
+        document.getElementById('cameraTopPredictions').innerHTML = html;
+        document.getElementById('cameraResultSection').style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
