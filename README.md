@@ -1,4 +1,4 @@
-# Tomato Disease Detection
+# Tomato Disease Detection using an Ensemble of XGBoost and EfficientNet
 
 To run this project:
 
